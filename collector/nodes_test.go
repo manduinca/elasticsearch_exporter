@@ -26,6 +26,40 @@ import (
 	"github.com/prometheus/common/promslog"
 )
 
+func TestNodesSearchOpenContexts(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/_nodes/stats" {
+			http.NotFound(w, r)
+			return
+		}
+		io.WriteString(w, `{
+			"cluster_name": "test-cluster",
+			"nodes": {
+				"node-1": {"name": "first", "host": "host-1", "roles": ["data"], "indices": {"search": {"open_contexts": 17, "query_current": 1}}},
+				"node-2": {"name": "second", "host": "host-2", "roles": ["master", "ingest"], "indices": {"search": {"open_contexts": 31, "query_current": 2}}},
+				"node-3": {"name": "missing", "host": "host-3", "roles": ["data"], "indices": {"search": {"query_current": 3}}}
+			}
+		}`)
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := NewNodes(promslog.NewNopLogger(), ts.Client(), u, true, "_local")
+	want := `
+# HELP elasticsearch_indices_search_open_contexts Number of open search contexts on this node
+# TYPE elasticsearch_indices_search_open_contexts gauge
+elasticsearch_indices_search_open_contexts{cluster="test-cluster",es_client_node="false",es_data_node="true",es_ingest_node="false",es_master_node="false",host="host-1",name="first"} 17
+elasticsearch_indices_search_open_contexts{cluster="test-cluster",es_client_node="false",es_data_node="false",es_ingest_node="true",es_master_node="true",host="host-2",name="second"} 31
+elasticsearch_indices_search_open_contexts{cluster="test-cluster",es_client_node="false",es_data_node="true",es_ingest_node="false",es_master_node="false",host="host-3",name="missing"} 0
+`
+	if err := testutil.CollectAndCompare(c, strings.NewReader(want), "elasticsearch_indices_search_open_contexts"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestIsDataNode(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -248,6 +282,9 @@ func TestNodesStats(t *testing.T) {
             # HELP elasticsearch_indices_search_fetch_total Total number of fetches
             # TYPE elasticsearch_indices_search_fetch_total counter
             elasticsearch_indices_search_fetch_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
+            # HELP elasticsearch_indices_search_open_contexts Number of open search contexts on this node
+            # TYPE elasticsearch_indices_search_open_contexts gauge
+            elasticsearch_indices_search_open_contexts{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
             # HELP elasticsearch_indices_search_query_time_seconds Total search query time in seconds
             # TYPE elasticsearch_indices_search_query_time_seconds counter
             elasticsearch_indices_search_query_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="127.0.0.1",name="bVrN1Hx"} 0
@@ -710,6 +747,9 @@ func TestNodesStats(t *testing.T) {
              # HELP elasticsearch_indices_search_fetch_total Total number of fetches
              # TYPE elasticsearch_indices_search_fetch_total counter
              elasticsearch_indices_search_fetch_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
+             # HELP elasticsearch_indices_search_open_contexts Number of open search contexts on this node
+             # TYPE elasticsearch_indices_search_open_contexts gauge
+             elasticsearch_indices_search_open_contexts{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
              # HELP elasticsearch_indices_search_query_time_seconds Total search query time in seconds
              # TYPE elasticsearch_indices_search_query_time_seconds counter
              elasticsearch_indices_search_query_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="9_P7yui"} 0
@@ -1236,6 +1276,9 @@ func TestNodesStats(t *testing.T) {
              # HELP elasticsearch_indices_search_fetch_total Total number of fetches
              # TYPE elasticsearch_indices_search_fetch_total counter
              elasticsearch_indices_search_fetch_total{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
+             # HELP elasticsearch_indices_search_open_contexts Number of open search contexts on this node
+             # TYPE elasticsearch_indices_search_open_contexts gauge
+             elasticsearch_indices_search_open_contexts{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0
              # HELP elasticsearch_indices_search_query_time_seconds Total search query time in seconds
              # TYPE elasticsearch_indices_search_query_time_seconds counter
              elasticsearch_indices_search_query_time_seconds{cluster="elasticsearch",es_client_node="true",es_data_node="true",es_ingest_node="true",es_master_node="true",host="172.17.0.2",name="aaf5a8a0bceb"} 0

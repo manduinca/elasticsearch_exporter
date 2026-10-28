@@ -27,6 +27,42 @@ import (
 	"github.com/prometheus/common/promslog"
 )
 
+func TestIndicesSearchOpenContexts(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			io.WriteString(w, `{"cluster_name": "test-cluster"}`)
+		case "/_all/_stats":
+			io.WriteString(w, `{
+				"indices": {
+					"first": {"primaries": {"search": {"open_contexts": 3}}, "total": {"search": {"open_contexts": 7, "query_current": 1}}},
+					"second": {"primaries": {"search": {"open_contexts": 5}}, "total": {"search": {"open_contexts": 11, "query_current": 2}}},
+					"missing": {"primaries": {"search": {"open_contexts": 13}}, "total": {"search": {"query_current": 3}}}
+				}
+			}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer ts.Close()
+
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := NewIndices(promslog.NewNopLogger(), ts.Client(), u, false, false)
+	want := `
+# HELP elasticsearch_index_stats_search_open_contexts Number of open search contexts on this index
+# TYPE elasticsearch_index_stats_search_open_contexts gauge
+elasticsearch_index_stats_search_open_contexts{cluster="test-cluster",index="first"} 7
+elasticsearch_index_stats_search_open_contexts{cluster="test-cluster",index="second"} 11
+elasticsearch_index_stats_search_open_contexts{cluster="test-cluster",index="missing"} 0
+`
+	if err := testutil.CollectAndCompare(c, strings.NewReader(want), "elasticsearch_index_stats_search_open_contexts"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestIndices(t *testing.T) {
 	// Testcases created using:
 	//  docker run -d -p 9200:9200 elasticsearch:VERSION-alpine
@@ -195,6 +231,10 @@ func TestIndices(t *testing.T) {
              # TYPE elasticsearch_index_stats_search_fetch_total counter
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_open_contexts Number of open search contexts on this index
+             # TYPE elasticsearch_index_stats_search_open_contexts gauge
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_2"} 0
              # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
              # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
              elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
@@ -513,6 +553,10 @@ func TestIndices(t *testing.T) {
              # TYPE elasticsearch_index_stats_search_fetch_total counter
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_open_contexts Number of open search contexts on this index
+             # TYPE elasticsearch_index_stats_search_open_contexts gauge
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_2"} 0
              # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
              # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
              elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index="foo_1"} 0
@@ -943,6 +987,13 @@ func TestIndices(t *testing.T) {
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index=".watches"} 0
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
+             # HELP elasticsearch_index_stats_search_open_contexts Number of open search contexts on this index
+             # TYPE elasticsearch_index_stats_search_open_contexts gauge
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index=".monitoring-data-2"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index=".monitoring-es-2-2017.08.23"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index=".watches"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_2"} 0
              # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
              # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
              elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index=".monitoring-data-2"} 0
@@ -1456,6 +1507,12 @@ func TestIndices(t *testing.T) {
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_open_contexts Number of open search contexts on this index
+             # TYPE elasticsearch_index_stats_search_open_contexts gauge
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_3"} 0
              # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
              # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
              elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.071
@@ -1929,6 +1986,12 @@ func TestIndices(t *testing.T) {
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_1"} 0
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_2"} 0
              elasticsearch_index_stats_search_fetch_total{cluster="unknown_cluster",index="foo_3"} 0
+             # HELP elasticsearch_index_stats_search_open_contexts Number of open search contexts on this index
+             # TYPE elasticsearch_index_stats_search_open_contexts gauge
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index=".geoip_databases"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_1"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_2"} 0
+             elasticsearch_index_stats_search_open_contexts{cluster="unknown_cluster",index="foo_3"} 0
              # HELP elasticsearch_index_stats_search_query_time_seconds_total Total search query time in seconds
              # TYPE elasticsearch_index_stats_search_query_time_seconds_total counter
              elasticsearch_index_stats_search_query_time_seconds_total{cluster="unknown_cluster",index=".geoip_databases"} 0.057

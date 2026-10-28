@@ -35,6 +35,7 @@
 | elasticsearch_filesystem_io_stats_device_write_size_kilobytes_sum    | gauge      | 1           | Total kilobytes written to disk                                                                     |
 | elasticsearch_ilm_status                                             | gauge      | 1           | Current status of ILM. Status can be `STOPPED`, `RUNNING`, `STOPPING`.                              |
 | elasticsearch_ilm_index_status                                       | gauge      | 4           | Status of ILM policy for index                                                                      |
+| elasticsearch_index_stats_search_open_contexts                       | gauge      | 1           | Number of open search contexts on this index                                                        |
 | elasticsearch_indices_active_queries                                 | gauge      | 1           | The number of currently active queries                                                              |
 | elasticsearch_indices_docs                                           | gauge      | 1           | Count of documents on this node                                                                     |
 | elasticsearch_indices_docs_deleted                                   | gauge      | 1           | Count of deleted documents on this node                                                             |
@@ -82,6 +83,7 @@
 | elasticsearch_indices_request_cache_memory_size_bytes                | gauge      | 1           | Request cache memory usage in bytes                                                                 |
 | elasticsearch_indices_search_fetch_time_seconds                      | counter    | 1           | Total search fetch time in seconds                                                                  |
 | elasticsearch_indices_search_fetch_total                             | counter    | 1           | Total number of fetches                                                                             |
+| elasticsearch_indices_search_open_contexts                           | gauge      | 1           | Number of open search contexts on this node                                                         |
 | elasticsearch_indices_search_query_time_seconds                      | counter    | 1           | Total search query time in seconds                                                                  |
 | elasticsearch_indices_search_query_total                             | counter    | 1           | Total number of queries                                                                             |
 | elasticsearch_indices_segments_count                                 | gauge      | 1           | Count of index segments on this node                                                                |

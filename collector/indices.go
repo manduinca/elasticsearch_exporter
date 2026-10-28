@@ -183,6 +183,11 @@ var (
 		indicesLabels, nil,
 	)
 	// TODO(@sysadmind): The metrics below should change the subsystem to "indices"
+	indicesSearchOpenContexts = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "index_stats", "search_open_contexts"),
+		"Number of open search contexts on this index",
+		indicesLabels, nil,
+	)
 	indicesSearchQueryTimeTotal = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "index_stats", "search_query_time_seconds_total"),
 		"Total search query time in seconds",
@@ -540,6 +545,7 @@ func (i *Indices) Describe(ch chan<- *prometheus.Desc) {
 	ch <- indicesSegmentFBSMemoryTotal
 	ch <- indicesCompletionPrimary
 	ch <- indicesCompletionTotal
+	ch <- indicesSearchOpenContexts
 	ch <- indicesSearchQueryTimeTotal
 	ch <- indicesActiveQueries
 	ch <- indicesSearchQueryTotal
@@ -987,6 +993,14 @@ func (i *Indices) emitIndexMetrics(ch chan<- prometheus.Metric, indexName string
 		indicesCompletionTotal,
 		prometheus.GaugeValue,
 		float64(indexStats.Total.Completion.SizeInBytes),
+		indexName,
+		clusterName,
+	)
+
+	ch <- prometheus.MustNewConstMetric(
+		indicesSearchOpenContexts,
+		prometheus.GaugeValue,
+		float64(indexStats.Total.Search.OpenContexts),
 		indexName,
 		clusterName,
 	)
